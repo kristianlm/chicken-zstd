@@ -1,0 +1,7 @@
+/zstd.build.sh
+/zstd.import.scm
+/zstd.import.so
+/zstd.install.sh
+/zstd.link
+/zstd.so
+/zstd.static.o
