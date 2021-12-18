@@ -2,10 +2,9 @@
         chicken.port
         (only chicken.blob string->blob)
         (only chicken.memory move-memory!)
-        (only chicken.io read-string!)
+        (only chicken.io read-string! write-string)
         (only chicken.gc set-finalizer!)
-        (only chicken.memory.representation number-of-bytes)
-        srfi-4)
+        (only chicken.memory.representation number-of-bytes))
 
 (foreign-declare "
 #include <zstd.h>
@@ -56,11 +55,11 @@
       status
       (error "zstd error: " ((foreign-lambda c-string "ZSTD_getErrorName" size_t) status))))
 
-(define (zstd-cstream-compress zstream u8out out-pos in in-pos endOp)
+(define (zstd-cstream-compress zstream out out-pos in in-pos endOp)
 
   (define compressStream2
     (foreign-lambda* size_t ((ZSTD_CStream* zs)
-                             (u8vector out)       (size_t out_len) ((c-pointer size_t) out_pos)
+                             (scheme-pointer out) (size_t out_len) ((c-pointer size_t) out_pos)
                              (scheme-pointer in)  (size_t  in_len) ((c-pointer size_t)  in_pos)
                              (int endOp))
                      "ZSTD_outBuffer bo = { .dst = out, .size = out_len, .pos = *out_pos};"
@@ -78,8 +77,8 @@
                     ((end)      (foreign-value "ZSTD_e_end"      int))
                     (else (error "endOp must be one of (continue flush end)" endOp))))
            (status (compressStream2 zstream
-                                    u8out (u8vector-length u8out) (location out_pos)
-                                    in    (number-of-bytes  in)   (location  in_pos)
+                                    out (number-of-bytes out) (location out_pos)
+                                    in  (number-of-bytes  in) (location  in_pos)
                                     endOp)))
       (zstd-error? status)
       (values status out_pos in_pos))))
@@ -87,16 +86,14 @@
 (define (compressing-output-port output-port
                                  #!key
                                  (level 3) ;; official default
-                                 (buffer (make-u8vector (* 1024 4))))
-
-  (when (string? buffer) (set! buffer (blob->u8vector/shared (string->blob buffer))))
+                                 (buffer (make-string (* 1024 4))))
 
   (let ((zs (new-zstd-cstream level: level)))
 
     (define (feed! str type)
       (let loop ((ipos 0))
         (receive (status opos ipos) (zstd-cstream-compress zs buffer 0 str ipos type)
-          (write-u8vector buffer output-port 0 opos)
+          (write-string buffer opos output-port)
           (unless (zero? status)
             (loop ipos)))))
 
