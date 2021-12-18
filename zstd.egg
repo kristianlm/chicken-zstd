@@ -1,0 +1,12 @@
+;; -*- scheme -*-
+((synopsis "ZStandard bindings")
+ (author "Kristian Lein-Mathisen")
+ (category data)
+ (license "BSD")
+ (dependencies)
+ (foreign-dependencies zstd)
+ (test-dependencies test)
+ (components (extension zstd
+                        (source "zstd-module.scm")
+                        (source-dependencies "zstd.scm")
+                        (csc-options "-L" "-lzstd"))))
