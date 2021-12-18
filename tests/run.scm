@@ -50,6 +50,8 @@
 (test-group
  "compression"
 
+ (test "basic port" #t (output-port? (compressing-output-port)))
+
  (define (with-output-to-compressed-string-and-back thunk)
    (let ((compressed (with-output-to-string
                        (lambda ()

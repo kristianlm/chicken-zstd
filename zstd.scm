@@ -83,7 +83,7 @@
       (zstd-error? status)
       (values status out_pos in_pos))))
 
-(define (compressing-output-port output-port
+(define (compressing-output-port #!optional (output-port (current-output-port))
                                  #!key
                                  (level 3) ;; official default
                                  (buffer (make-string (* 1024 4))))
@@ -124,7 +124,8 @@
       (zstd-error? status)
       (values status out_pos in_pos))))
 
-(define (decompressing-input-port ip #!key (buffer (make-string (* 1024 4))))
+(define (decompressing-input-port #!optional (ip (current-input-port))
+                                  #!key (buffer (make-string (* 1024 4))))
 
   (let ((z (new-zstd-dstream))
         (eif? #f)
