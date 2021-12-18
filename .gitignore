@@ -5,3 +5,6 @@
 /zstd.link
 /zstd.so
 /zstd.static.o
+/examples/hello
+/examples/zstd
+/examples/unzstd
