@@ -190,6 +190,7 @@
                ;; peek-char
                (lambda ()
                  (unless peek (set! peek (read-char)))
+                 (when (eq? #!eof peek) (set! eof? #t))
                  peek)
                ;; read-string!
                (lambda (port len str offset)
