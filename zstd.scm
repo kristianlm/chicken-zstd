@@ -3,16 +3,63 @@
         (only chicken.memory move-memory!)
         (only chicken.io read-string! write-string)
         (only chicken.gc set-finalizer!)
-        (only chicken.memory.representation number-of-bytes))
+        (only chicken.memory.representation number-of-bytes)
+        (only chicken.blob blob?))
 
 (foreign-declare "
 #include <zstd.h>
 ")
 
+(define (zstd-error? status)
+  (if (zero? ((foreign-lambda unsigned-int "ZSTD_isError" size_t) status))
+      status
+      (error "zstd error: " ((foreign-lambda c-string "ZSTD_getErrorName" size_t) status))))
+
 (define zstd-version (list
                       (foreign-value "ZSTD_VERSION_MAJOR" int)
                       (foreign-value "ZSTD_VERSION_MINOR" int)
                       (foreign-value "ZSTD_VERSION_RELEASE" int)))
+
+(define (zstd-frame-content-size z)
+  (let ((framesize ((foreign-lambda
+                     unsigned-integer64 "ZSTD_getFrameContentSize" scheme-pointer size_t)
+                    z (number-of-bytes z))))
+    (if (= framesize (foreign-value "ZSTD_CONTENTSIZE_UNKNOWN" unsigned-integer64))
+        #f
+        (zstd-error? framesize))))
+
+(define (zstd-compress s #!key (level 3))
+  (unless (or (string? s) (blob? s)) (error 'zstd-compress "s must be string or blob" s))
+  (let* ((zlen ((foreign-lambda*
+                 size_t ((size_t src))
+                 "return(ZSTD_COMPRESSBOUND(src));")
+                (number-of-bytes s)))
+         (z (make-string zlen))
+         (len ((foreign-lambda size_t "ZSTD_compress"
+                               scheme-pointer ;; dst
+                               size_t    ;; dst capacity
+                               scheme-pointer ;; src
+                               size_t ;; src len
+                               int #;level )
+               z (number-of-bytes z)
+               s (number-of-bytes s)
+               level)))
+    (zstd-error? len)
+    (substring z 0 len)))
+
+(define (zstd-decompress s)
+  (unless (or (string? s) (blob? s)) (error 'zstd-compress "s must be string or blob" s))
+  (let* ((dst (make-string (zstd-frame-content-size s)))
+         (len ((foreign-lambda size_t "ZSTD_decompress"
+                               scheme-pointer ;; dst
+                               size_t    ;; dst capacity
+                               scheme-pointer ;; src
+                               size_t ;; src len
+                               )
+               dst (number-of-bytes dst)
+               s   (number-of-bytes s))))
+    (zstd-error? len)
+    dst))
 
 (define-record zstd-cstream pointer)
 (define-foreign-type ZSTD_CStream*   (c-pointer "ZSTD_CStream")
@@ -48,11 +95,6 @@
   (let ((zs ((foreign-lambda ZSTD_DStream* ZSTD_createDStream))))
     ((foreign-lambda size_t "ZSTD_initDStream" ZSTD_DStream*) zs)
     (finalizer zs)))
-
-(define (zstd-error? status)
-  (if (zero? ((foreign-lambda unsigned-int "ZSTD_isError" size_t) status))
-      status
-      (error "zstd error: " ((foreign-lambda c-string "ZSTD_getErrorName" size_t) status))))
 
 (define (zstd-cstream-compress zstream out out-pos in in-pos endOp)
 

@@ -28,12 +28,6 @@ Returns an input-port from which uncompressed data can be
 read. Compressed data read, from `input-port`, will be read in the
 process. Closing this input-port does not close `input-port`.
 
-## API Design
-
-The API surface is intentionally left small, with only 2 port-based
-functions. Hopefully, this is sufficient for most use-cases. If this
-is not the case, please give feedback.
-
 ## Examples
 
 Some very basic usage for illustration.
@@ -86,5 +80,3 @@ csc unzstd.scm
 
 - This egg does not support the dictionary features of the zstd C API.
 - This egg does not support re-using `z-stream` contexts.
-- This egg does not support the simple API, only the "unbounded"
-  streaming API. This may be less efficient for small data.

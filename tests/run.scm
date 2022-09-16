@@ -1,12 +1,47 @@
 (import zstd test
         chicken.port
-        (only chicken.string conc)
         (only chicken.io read-string)
-        (only chicken.process with-input-from-pipe)
-        (only chicken.blob blob->string))
+        (only chicken.blob string->blob))
+
+(test-group "frame-content-size"
+            (test "empty frame"  0 (zstd-frame-content-size (zstd-compress "")))
+            (test "small frame"  5 (zstd-frame-content-size (zstd-compress "hello")))
+            (test "big frame" 4096 (zstd-frame-content-size (zstd-compress (make-string 4096 #\x))))
+
+            (test-error "frame-content-size on invalid frame" (zstd-frame-content-size ""))
+
+
+            (let ((frame (with-output-to-string
+                           (lambda ()
+                             (let ((p (compressing-output-port)))
+                               (display "test" p)
+                               (close-output-port p))))))
+              (test "frame-content-size gives #f on stream API frames"
+                    #f
+                    (zstd-frame-content-size frame))))
 
 (test-group
- "decompression"
+ "simple API"
+ (define hllo "(\xb5/\xfd \x05)\x00\x00hello") ;; compressed hello
+ (test-error "type check compress" (zstd-compress 12))
+ (test-error "type check decompress" (zstd-compress 12))
+ (test "compress hello string" hllo (zstd-compress "hello"))
+ (test "compress hello blob" hllo (zstd-compress (string->blob "hello")))
+
+ (define aaa... "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+ (test "compression level" #t (> (string-length (zstd-compress aaa... #:level 1))
+                                 (string-length (zstd-compress aaa... #:level 19))))
+ 
+ (test "decompress hello string" "hello" (zstd-decompress hllo))
+ (test "decompress hello blob" "hello" (zstd-decompress (string->blob hllo)))
+
+
+ (test "" ;; make sure frame-size 0 ≠ error
+       (zstd-decompress (zstd-compress "")))
+ (test-error "decompress empty string" (zstd-decompress "")) )
+
+(test-group
+ "streaming decompression"
 
  (define (wifdip proc)
    (with-input-from-port
@@ -48,7 +83,7 @@
      (test-error "read after close" (read-string 1)))))
 
 (test-group
- "compression"
+ "streaming compression"
 
  (test "basic port" #t (output-port? (compressing-output-port)))
 
