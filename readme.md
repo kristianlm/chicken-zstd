@@ -14,13 +14,40 @@ Hosted [here](https://github.com/kristianlm/chicken-zstd).
 
 ## API
 
+    [procedure] (zstd-compress src #!key (level 3))
+
+Compress the string or blob `src`, returning the entire compressed
+frame as a string. This is faster than using ports but may not be
+suitable for large inputs.
+
+If `level` is supplied, it sets the compression level as documented by
+`man zstd`, and should be an integer in the range [1-19].
+
+    [procedure] (zstd-decompress trg)
+
+Decompress the string or blob `trg`, which must be a valid zstd
+frame. Returns the uncompressed data as a string.
+
+Note that `zstd-decompress` cannot decompress data from the port-based
+API, because the frame sizes are unknown ahead of time. It is
+therefore safest to always decompress using the port-based API.
+
+    [procedure] (zstd-frame-content-size frame)
+
+Return the size of the uncompressed data stored in `frame` in number
+of bytes, or `#f` if the frame size is unknown. The port-based API
+will produce frames of unknown sizes. `frame` can only be decompressed
+using `zstd-decompress` if this function returns non-`#f`.
+
     [procedure] (compressing-output-port output-port #!key (level 3)) => output-port
 
 Returns an output-port to which uncompressed data can be written, and
-its compressed form will be written to `output-port`. If `level` is
-supplied, it sets the compression level as documented by `man zstd`,
-and should be an integer in the range [1-19]. Closing this output-port
-does not close `output-port`.
+its compressed form will be written to `output-port`. It is important
+to close this port in order to flush internal zstd buffers. Closing
+this output-port does not close `output-port`.
+
+If `level` is supplied, it sets the compression level as documented by
+`man zstd`, and should be an integer in the range [1-19].
 
     [procedure] (decompressing-input-port input-port) => input-port
 
