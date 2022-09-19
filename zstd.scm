@@ -1,6 +1,5 @@
 (import chicken.foreign
         chicken.port
-        (only chicken.blob string->blob)
         (only chicken.memory move-memory!)
         (only chicken.io read-string! write-string)
         (only chicken.gc set-finalizer!)
